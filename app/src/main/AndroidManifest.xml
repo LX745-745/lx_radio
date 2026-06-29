@@ -33,8 +33,8 @@
         android:name=".NeriPlayerApplication">
 
         <meta-data android:name="lyricon_module" android:value="true" />
-        <meta-data android:name="lyricon_module_author" android:value="NeriPlayer" />
-        <meta-data android:name="lyricon_module_description" android:value="NeriPlayer Lyricon Provider" />
+        <meta-data android:name="lyricon_module_author" android:value="李烜's radio" />
+        <meta-data android:name="lyricon_module_description" android:value="李烜's radio Lyricon Provider" />
 
         <activity
             android:name=".activity.MainActivity"

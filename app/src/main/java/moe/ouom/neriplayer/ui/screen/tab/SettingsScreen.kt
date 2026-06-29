@@ -97,7 +97,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import moe.ouom.neriplayer.R
@@ -138,7 +137,6 @@ import moe.ouom.neriplayer.ui.screen.tab.settings.component.ThemeModeActionButto
 import moe.ouom.neriplayer.ui.screen.tab.settings.component.ThemeSeedListItem
 import moe.ouom.neriplayer.ui.screen.tab.settings.component.maskCookieValue
 import moe.ouom.neriplayer.ui.screen.tab.settings.component.settingsItemClickable
-import moe.ouom.neriplayer.ui.screen.tab.settings.dialog.SettingsGitHubDialogs
 import moe.ouom.neriplayer.ui.screen.tab.settings.dialog.SettingsPreferenceDialogs
 import moe.ouom.neriplayer.ui.screen.tab.settings.dialog.SettingsWebDavDialogs
 import moe.ouom.neriplayer.ui.screen.tab.settings.miuix.MiuixSettingsChoiceRow
@@ -355,8 +353,6 @@ fun SettingsScreen(
 
     var showColorPickerDialog by remember { mutableStateOf(false) }
     var showDpiDialog by remember { mutableStateOf(false) }
-    var showGitHubConfigDialog by remember { mutableStateOf(false) }
-    var showClearGitHubConfigDialog by remember { mutableStateOf(false) }
     var showWebDavConfigDialog by remember { mutableStateOf(false) }
     var showClearWebDavConfigDialog by remember { mutableStateOf(false) }
     var showListenTogetherResetUuidDialog by remember { mutableStateOf(false) }
@@ -1318,10 +1314,6 @@ fun SettingsScreen(
                             onClearImportStatus = backupRestoreVm::clearImportStatus,
                             onClearConfigExportStatus = configTransferVm::clearExportStatus,
                             onClearConfigImportStatus = configTransferVm::clearImportStatus,
-                            autoSettingsRepository = autoSettingsRepository,
-                            scope = scope,
-                            onOpenGitHubConfig = { showGitHubConfigDialog = true },
-                            onOpenClearGitHubConfig = { showClearGitHubConfigDialog = true },
                             onOpenWebDavConfig = { showWebDavConfigDialog = true },
                             onOpenClearWebDavConfig = { showClearWebDavConfigDialog = true }
                         )
@@ -1369,13 +1361,6 @@ fun SettingsScreen(
                                 } else {
                                     inlineMsg = context.getString(R.string.debug_mode_enabled)
                                 }
-                            },
-                            onOpenGitHubRepo = {
-                                val intent = Intent(
-                                    Intent.ACTION_VIEW,
-                                    "https://github.com/cwuom/NeriPlayer".toUri()
-                                )
-                                context.startActivity(intent)
                             }
                         )
                     }
@@ -1654,13 +1639,6 @@ fun SettingsScreen(
             }
         )
     }
-
-    SettingsGitHubDialogs(
-        showGitHubConfigDialog = showGitHubConfigDialog,
-        onShowGitHubConfigDialogChange = { showGitHubConfigDialog = it },
-        showClearGitHubConfigDialog = showClearGitHubConfigDialog,
-        onShowClearGitHubConfigDialogChange = { showClearGitHubConfigDialog = it }
-    )
 
     SettingsWebDavDialogs(
         showWebDavConfigDialog = showWebDavConfigDialog,

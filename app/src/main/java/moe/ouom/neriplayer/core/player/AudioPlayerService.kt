@@ -427,7 +427,7 @@ class AudioPlayerService : Service() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "NeriPlayer Playback",
+            "${getString(R.string.app_name)} Playback",
             NotificationManager.IMPORTANCE_LOW
         )
         nm.createNotificationChannel(channel)
@@ -730,7 +730,7 @@ class AudioPlayerService : Service() {
         builder.addAction(favAction)
         builder.addAction(R.drawable.round_skip_next_24, getString(R.string.player_next), nextIntent)
 
-        builder.setContentTitle(song?.displayName() ?: "NeriPlayer")
+        builder.setContentTitle(song?.displayName() ?: getString(R.string.app_name))
 
         val timerState = PlayerManager.sleepTimerManager.timerState.value
         val contentText = if (timerState.isActive) {
@@ -845,7 +845,7 @@ class AudioPlayerService : Service() {
         }
         return PlaybackNotificationSnapshot(
             songKey = song?.stableKey(),
-            title = song?.displayName() ?: "NeriPlayer",
+            title = song?.displayName() ?: getString(R.string.app_name),
             text = text,
             isTransportActive = PlayerManager.isTransportActive(),
             isPlaybackControlPlaying = PlayerManager.playbackControlPlayingFlow.value,
@@ -867,7 +867,7 @@ class AudioPlayerService : Service() {
             requestLargeIconAsync(coverSource)
         }
 
-        val normalTitle = song?.displayName() ?: "NeriPlayer"
+        val normalTitle = song?.displayName() ?: getString(R.string.app_name)
         val normalArtist = song?.displayArtist().orEmpty()
         val lyricLine = PlayerManager.externalBluetoothLyricLineFlow.value
         val useBluetoothLyrics = shouldUseExternalBluetoothLyrics(

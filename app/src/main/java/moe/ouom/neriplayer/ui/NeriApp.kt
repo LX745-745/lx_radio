@@ -167,6 +167,7 @@ import moe.ouom.neriplayer.data.settings.readPlaybackPreferenceSnapshotCached
 import moe.ouom.neriplayer.navigation.Destinations
 import moe.ouom.neriplayer.ui.component.NeriBottomBar
 import moe.ouom.neriplayer.ui.component.NeriMiniPlayer
+import moe.ouom.neriplayer.ui.component.MineradioParticleField
 import moe.ouom.neriplayer.ui.component.ThemeRevealOverlay
 import moe.ouom.neriplayer.ui.component.blockUnderlyingTouches
 import moe.ouom.neriplayer.ui.screen.DownloadManagerScreen
@@ -192,7 +193,6 @@ import moe.ouom.neriplayer.ui.screen.playlist.LocalPlaylistDetailScreen
 import moe.ouom.neriplayer.ui.screen.playlist.NeteaseAlbumDetailScreen
 import moe.ouom.neriplayer.ui.screen.playlist.NeteasePlaylistDetailScreen
 import moe.ouom.neriplayer.ui.theme.NeriTheme
-import moe.ouom.neriplayer.ui.view.HyperBackground
 import moe.ouom.neriplayer.ui.viewmodel.debug.LogViewerScreen
 import moe.ouom.neriplayer.ui.viewmodel.playlist.BiliVideoItem
 import moe.ouom.neriplayer.ui.viewmodel.playlist.SongItem
@@ -675,6 +675,7 @@ private fun NeriAppContent(
     // 缓存当前封面的取色结果，避免开关动态取色时先闪到默认种子色
     var coverSeedHex by remember { mutableStateOf<String?>(null) }
     val currentSong by PlayerManager.currentSongFlow.collectAsState()
+    val isPlaybackControlPlaying by PlayerManager.playbackControlPlayingFlow.collectAsState()
     val displayCoverUrl = remember(currentSong, context) {
         currentSong.resolveUiCoverSource(context)
     }
@@ -854,11 +855,7 @@ private fun NeriAppContent(
         )
     }
 
-    val isDark = when {
-        forceDark -> true
-        followSystemDark -> isSystemInDarkTheme()
-        else -> false
-    }
+    val isDark = true
     val hazeState = remember { HazeState() }
     val preferredQuality by repo.audioQualityFlow.collectAsState(initial = "exhigh")
     val youtubePreferredQuality by repo.youtubeAudioQualityFlow.collectAsState(initial = "very_high")
@@ -1022,7 +1019,7 @@ private fun NeriAppContent(
 
         NeriTheme(
             followSystemDark = followSystemDark,
-            forceDark = forceDark,
+            forceDark = true,
             dynamicColor = useSystemDynamic,
             seedColorHex = effectiveSeedHex,
             paletteStyle = themePaletteStyle,
@@ -1081,7 +1078,24 @@ private fun NeriAppContent(
                 }
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color(0xFF061116),
+                            0.42f to Color(0xFF05090B),
+                            1f to Color.Black
+                        )
+                    )
+            ) {
+                MineradioParticleField(
+                    modifier = Modifier.matchParentSize(),
+                    particleCount = 132,
+                    intensity = if (isPlaybackControlPlaying) 0.58f else 0.46f,
+                    isPlaying = isPlaybackControlPlaying
+                )
+
                 val modifier = if (backgroundImageUri == null || !effectiveAdvancedBlurEnabled) {
                     Modifier
                 } else Modifier
@@ -1101,17 +1115,13 @@ private fun NeriAppContent(
                     modifier = modifier
                 )
 
-                val containerColor = if (backgroundImageUri == null) {
-                    MaterialTheme.colorScheme.background
-                } else Color.Transparent
+                val containerColor = Color.Transparent
 
                 val selectAlpha = if (backgroundImageUri == null) 1f else 0f
                 val bottomBarHazeModifier =
                     if (effectiveAdvancedBlurEnabled) Modifier.hazeChild(state = hazeState) else Modifier
 
-                val currentSong by PlayerManager.currentSongFlow.collectAsState()
                 val isMiniPlayerVisible = currentSong != null && !showNowPlaying
-                val isPlaybackControlPlaying by PlayerManager.playbackControlPlayingFlow.collectAsState()
                 val reservedMiniPlayerHeightDp = if (currentSong == null) {
                     0.dp
                 } else {
@@ -2163,16 +2173,18 @@ private fun NeriAppContent(
                                             .background(Color.Black.copy(alpha = nowPlayingCoverBlurDarken.coerceIn(0f, 0.8f)))
                                     )
                                 }
-                            } else if (effectiveDynamicBackgroundEnabled) {
-                                HyperBackground(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .graphicsLayer { alpha = 0.80f },
-                                    isDark = true,
-                                    coverUrl = nowPlayingCoverUrl,
-                                    refreshKey = coverArtRefreshToken
-                                )
                             }
+
+                            MineradioParticleField(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        alpha = if (isPlaybackControlPlaying) 0.58f else 0.42f
+                                    },
+                                particleCount = 260,
+                                intensity = if (isPlaybackControlPlaying) 0.86f else 0.62f,
+                                isPlaying = isPlaybackControlPlaying
+                            )
 
                             CompositionLocalProvider(LocalMiniPlayerHeight provides 0.dp) {
                                 NowPlayingScreen(

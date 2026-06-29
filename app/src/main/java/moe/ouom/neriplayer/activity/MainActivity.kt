@@ -131,6 +131,7 @@ import moe.ouom.neriplayer.listentogether.parseListenTogetherInvite
 import moe.ouom.neriplayer.listentogether.resolveListenTogetherBaseUrl
 import moe.ouom.neriplayer.ui.NeriApp
 import moe.ouom.neriplayer.ui.onboarding.StartupOnboardingScreen
+import moe.ouom.neriplayer.ui.screen.StartupLoadingScreen
 import moe.ouom.neriplayer.ui.screen.safemode.SafeModeScreen
 import moe.ouom.neriplayer.util.CrashReportStore
 import moe.ouom.neriplayer.util.ExceptionHandler
@@ -309,15 +310,21 @@ class MainActivity : ComponentActivity() {
                         }
                         SideEffect {
                             val controller = WindowInsetsControllerCompat(window, window.decorView)
-                            controller.isAppearanceLightStatusBars = !useDark
-                            controller.isAppearanceLightNavigationBars = !useDark
+                            controller.isAppearanceLightStatusBars = false
+                            controller.isAppearanceLightNavigationBars = false
                         }
 
                 // 入场动画状态
                 var playedEntrance by rememberSaveable { mutableStateOf(false) }
                 LaunchedEffect(Unit) { playedEntrance = true }
 
-                val stage = when (disclaimerAcceptedNullable) {
+                var startupSplashFinished by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    delay(2_600L)
+                    startupSplashFinished = true
+                }
+
+                val resolvedStage = when (disclaimerAcceptedNullable) {
                     null -> AppStage.Loading
                     true -> when (startupOnboardingCompletedNullable) {
                         null -> AppStage.Loading
@@ -326,6 +333,7 @@ class MainActivity : ComponentActivity() {
                     }
                     false -> AppStage.Disclaimer
                 }
+                val stage = if (startupSplashFinished) resolvedStage else AppStage.Loading
 
                 AnimatedContent(
                     targetState = stage,
@@ -348,12 +356,7 @@ class MainActivity : ComponentActivity() {
                 ) { current ->
                     when (current) {
                         AppStage.Loading -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .statusBarsPadding()
-                                    .navigationBarsPadding()
-                            )
+                            StartupLoadingScreen()
                         }
                         AppStage.Disclaimer -> {
                             val scope = rememberCoroutineScope()

@@ -80,7 +80,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +87,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -96,8 +96,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -180,14 +182,6 @@ fun HomeScreen(
         }
     }
 
-    val titleOptions = listOf(
-        stringResource(R.string.app_name),
-        stringResource(R.string.home_title_brand_loud),
-        stringResource(R.string.home_title_brand_wave),
-        stringResource(R.string.home_title_brand_call)
-    ).distinct()
-    val titleSeed = rememberSaveable { (0..Int.MAX_VALUE).random() }
-    val appBarTitle = titleOptions[titleSeed % titleOptions.size]
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -240,7 +234,7 @@ fun HomeScreen(
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
         ) {
             LargeTopAppBar(
-                title = { Text(appBarTitle) },
+                title = { LxHomeBrandTitle() },
                 actions = {
                     HapticIconButton(
                         enabled = !offlineMode,
@@ -980,6 +974,30 @@ private fun YtMusicHomeItemCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LxHomeBrandTitle() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = "李烜's radio",
+            style = TextStyle(
+                brush = Brush.linearGradient(
+                    listOf(
+                        Color.White,
+                        Color(0xFFF4D28A),
+                        Color(0xFF00F5D4)
+                    )
+                ),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.sp
+            )
+        )
     }
 }
 

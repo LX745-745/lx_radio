@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">NeriPlayer</string>
+    <string name="app_name">李烜\'s radio</string>
 
     <!-- Common Actions -->
     <string name="action_confirm">Confirm</string>
@@ -1222,7 +1222,7 @@
     <!-- Main Activity / Disclaimer -->
     <string name="disclaimer_title">Disclaimer &amp; Privacy Policy</string>
     <string name="disclaimer_section1_title">1. Software Nature</string>
-    <string name="disclaimer_section1_content">This software (NeriPlayer) is a cross-platform audio/video player tool that only provides technical framework and playback functions. It does not store or provide any audio/video content.</string>
+    <string name="disclaimer_section1_content">This software (李烜\'s radio) is a cross-platform audio/video player tool that only provides technical framework and playback functions. It does not store or provide any audio/video content.</string>
     <string name="disclaimer_section2_title">2. Content Source &amp; Copyright</string>
     <string name="disclaimer_section2_content">All playable content is accessed by users from third-party platforms. Copyright belongs to the original content providers. This software assumes no responsibility for the legality, accuracy, or availability of third-party platform content.</string>
     <string name="disclaimer_section3_title">3. User Responsibility</string>
@@ -1361,7 +1361,7 @@
     <string name="test_exception_message">This is a test exception to verify exception handler functionality</string>
 
     <!-- About -->
-    <string name="about_app_footer">NeriPlayer • GPLv3 • Powered by You</string>
+    <string name="about_app_footer">李烜\'s radio • GPLv3 • Powered by You</string>
 
     <!-- Playlist / Actions -->
     <string name="action_unfavorite">Unfavorite</string>
@@ -1417,9 +1417,9 @@
     <string name="home_favorite_playlist">Favorite Playlist</string>
     <string name="home_unfavorited">Unfavorited</string>
     <string name="continue_playing_remove">Remove</string>
-    <string name="home_title_brand_loud">NeriPlayer!</string>
-    <string name="home_title_brand_wave">NeriPlayer~</string>
-    <string name="home_title_brand_call">Hey, NeriPlayer</string>
+    <string name="home_title_brand_loud">李烜\'s radio!</string>
+    <string name="home_title_brand_wave">李烜\'s radio~</string>
+    <string name="home_title_brand_call">李烜\'s radio</string>
     <string name="home_all_cards_hidden">All home cards are hidden. Re-enable them in Settings.</string>
     <string name="home_offline_no_continue">Offline mode only shows Continue Playing. Nothing is available yet.</string>
     <string name="offline_mode_title">Offline Mode</string>
@@ -1516,7 +1516,7 @@
     <string name="local_playlist_play_next">Play Next…</string>
 
     <!-- Disclaimer -->
-    <string name="disclaimer_section1_body">This software (NeriPlayer) is a cross-platform audio/video player tool, used only to integrate and play public content from multiple third-party online platforms. The software itself does not upload, distribute, or modify any audio/video files; it does not store any user content or third-party content on the server side. For offline playback convenience, this software provides a &quot;save to local device only&quot; download function. The download process does not go through the developer\'s server and will not perform any cloud sync or backup.</string>
+    <string name="disclaimer_section1_body">This software (李烜\'s radio) is a cross-platform audio/video player tool, used only to integrate and play public content from multiple third-party online platforms. The software itself does not upload, distribute, or modify any audio/video files; it does not store any user content or third-party content on the server side. For offline playback convenience, this software provides a &quot;save to local device only&quot; download function. The download process does not go through the developer\'s server and will not perform any cloud sync or backup.</string>
     <string name="disclaimer_section2_bullet1">All playable content is accessed by users from third-party platforms, and copyright and related rights belong to the original author or platform;</string>
     <string name="disclaimer_section2_bullet2">Users should comply with the laws and regulations of their country/region when using;</string>
     <string name="disclaimer_section2_bullet3">The software supports downloading audio/video content from third-party platforms to the user\'s local device, but will not upload, sync, or store to any server;</string>
@@ -1641,7 +1641,7 @@
     <string name="listen_together_leave_room">Leave</string>
     <string name="listen_together_copy_invite">Copy Invite</string>
     <string name="listen_together_invite_copied">Invite copied</string>
-    <string name="listen_together_invite_share_text">%1$s invites you to join room %2$s in NeriPlayer. Open the app after copying this message, or use the link below.</string>
+    <string name="listen_together_invite_share_text">%1$s invites you to join room %2$s in 李烜\'s radio. Open the app after copying this message, or use the link below.</string>
     <string name="listen_together_creating_room">Creating room</string>
     <string name="listen_together_joining_room">Joining room</string>
     <string name="listen_together_refreshing_room_state">Refreshing room state</string>

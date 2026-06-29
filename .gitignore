@@ -21,6 +21,16 @@ local.properties
 /.report/
 /.ck/
 /.tmp/
+/.local-appdata/
+/.local-backups/
+/.local-gradle-cache/
+/gradle-project-cache/
+/node_modules/
+/unpacked_template/
+/package.json
+/package-lock.json
+/logo.png
+/*.docx
 /tools/
 /.kotlin/
 demo

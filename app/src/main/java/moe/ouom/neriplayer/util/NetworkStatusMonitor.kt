@@ -19,7 +19,7 @@ fun rememberOfflineModeState(): State<Boolean> {
     val appContext = remember(context) { context.applicationContext }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val offlineState = remember(appContext) {
-        mutableStateOf(!appContext.hasValidatedInternet())
+        mutableStateOf(!appContext.hasUsableInternet())
     }
 
     DisposableEffect(appContext) {
@@ -31,7 +31,7 @@ fun rememberOfflineModeState(): State<Boolean> {
             var disposed = false
 
             fun updateOfflineState() {
-                val nextOffline = !connectivityManager.hasValidatedInternet()
+                val nextOffline = !connectivityManager.hasUsableInternet()
                 if (disposed) return
 
                 if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -82,14 +82,19 @@ fun rememberOfflineModeState(): State<Boolean> {
     return offlineState
 }
 
-private fun Context.hasValidatedInternet(): Boolean {
+private fun Context.hasUsableInternet(): Boolean {
     val connectivityManager = getSystemService(ConnectivityManager::class.java) ?: return false
-    return connectivityManager.hasValidatedInternet()
+    return connectivityManager.hasUsableInternet()
 }
 
-private fun ConnectivityManager.hasValidatedInternet(): Boolean = runCatching {
+private fun ConnectivityManager.hasUsableInternet(): Boolean = runCatching {
     val activeNetwork = activeNetwork ?: return@runCatching false
     val capabilities = getNetworkCapabilities(activeNetwork) ?: return@runCatching false
-    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+        return@runCatching false
+    }
+    if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+        return@runCatching true
+    }
+    !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)
 }.getOrDefault(false)

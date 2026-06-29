@@ -49,7 +49,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
@@ -81,13 +80,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import moe.ouom.neriplayer.R
-import moe.ouom.neriplayer.data.settings.generated.AutoSettingsRepository
-import moe.ouom.neriplayer.data.settings.generated.AutoSettingsScopes
-import moe.ouom.neriplayer.data.settings.generated.AutoSettingsSwitchItems
 import moe.ouom.neriplayer.data.sync.github.SecureTokenStorage
 import moe.ouom.neriplayer.ui.viewmodel.ConfigTransferUiState
 import moe.ouom.neriplayer.ui.viewmodel.BackupRestoreUiState
-import moe.ouom.neriplayer.ui.viewmodel.GitHubSyncViewModel
 import moe.ouom.neriplayer.ui.viewmodel.WebDavSyncViewModel
 import moe.ouom.neriplayer.ui.screen.tab.settings.miuix.MiuixSettingsChoiceRow
 import moe.ouom.neriplayer.ui.screen.tab.settings.miuix.MiuixSettingsDialog
@@ -112,10 +107,6 @@ internal fun SettingsBackupRestoreSection(
     onClearImportStatus: () -> Unit,
     onClearConfigExportStatus: () -> Unit,
     onClearConfigImportStatus: () -> Unit,
-    autoSettingsRepository: AutoSettingsRepository,
-    scope: kotlinx.coroutines.CoroutineScope,
-    onOpenGitHubConfig: () -> Unit,
-    onOpenClearGitHubConfig: () -> Unit,
     onOpenWebDavConfig: () -> Unit,
     onOpenClearWebDavConfig: () -> Unit
 ) {
@@ -137,20 +128,13 @@ internal fun SettingsBackupRestoreSection(
         exit = fadeOut() + shrinkVertically()
     ) {
         val context = androidx.compose.ui.platform.LocalContext.current
-        val githubVm: GitHubSyncViewModel = viewModel()
         val webDavVm: WebDavSyncViewModel = viewModel()
-        val githubState by githubVm.uiState.collectAsState()
         val webDavState by webDavVm.uiState.collectAsState()
         var showPlayHistoryModeDialog by remember { mutableStateOf(false) }
         var showConfigExportWarningDialog by remember { mutableStateOf(false) }
         val storage = remember(context) { SecureTokenStorage(context) }
         val currentMode = remember { mutableStateOf(storage.getPlayHistoryUpdateMode()) }
-        var dataSaverMode by remember { mutableStateOf(storage.isDataSaverMode()) }
-        var pendingDataSaverMode by remember { mutableStateOf<Boolean?>(null) }
 
-        LaunchedEffect(githubVm, context) {
-            githubVm.initialize(context)
-        }
         LaunchedEffect(webDavVm, context) {
             webDavVm.initialize(context)
         }
@@ -159,11 +143,8 @@ internal fun SettingsBackupRestoreSection(
             configTransferUiState.lastImportSuccess
         ) {
             if (!configTransferUiState.isImporting && configTransferUiState.lastImportSuccess == true) {
-                githubVm.initialize(context)
                 webDavVm.initialize(context)
                 currentMode.value = storage.getPlayHistoryUpdateMode()
-                dataSaverMode = storage.isDataSaverMode()
-                pendingDataSaverMode = null
             }
         }
 
@@ -394,138 +375,7 @@ internal fun SettingsBackupRestoreSection(
                 color = MaterialTheme.colorScheme.outlineVariant
             )
 
-            ListItem(
-                leadingContent = {
-                    Icon(
-                        Icons.Outlined.CloudSync,
-                        contentDescription = stringResource(R.string.github_auto_sync),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                headlineContent = { Text(stringResource(R.string.github_auto_sync)) },
-                supportingContent = {
-                    Text(
-                        if (githubState.isConfigured) {
-                            stringResource(R.string.settings_configured)
-                        } else {
-                            stringResource(R.string.settings_not_configured)
-                        }
-                    )
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-            )
-
-            if (!githubState.isConfigured) {
-                ListItem(
-                    leadingContent = {
-                        Icon(
-                            Icons.Outlined.Settings,
-                            contentDescription = stringResource(R.string.settings_configure),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    headlineContent = { Text(stringResource(R.string.sync_config)) },
-                    supportingContent = { Text(stringResource(R.string.sync_config_desc)) },
-                    modifier = Modifier.settingsItemClickable(onClick = onOpenGitHubConfig),
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-            } else {
-                ListItem(
-                    leadingContent = {
-                        Icon(
-                            Icons.Outlined.Sync,
-                            contentDescription = stringResource(R.string.settings_auto_sync),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    headlineContent = { Text(stringResource(R.string.sync_auto)) },
-                    supportingContent = { Text(stringResource(R.string.sync_auto_desc)) },
-                    trailingContent = {
-                        MiuixSettingsSwitch(
-                            checked = githubState.autoSyncEnabled,
-                            onCheckedChange = { githubVm.toggleAutoSync(context, it) }
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-
-                ListItem(
-                    leadingContent = {
-                        Icon(
-                            Icons.Outlined.CloudUpload,
-                            contentDescription = stringResource(R.string.settings_sync_now),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    headlineContent = { Text(stringResource(R.string.sync_now)) },
-                    supportingContent = {
-                        if (githubState.lastSyncTime > 0) {
-                            Text(
-                                stringResource(
-                                    R.string.sync_last_time,
-                                    formatSyncTime(githubState.lastSyncTime)
-                                )
-                            )
-                        } else {
-                            Text(stringResource(R.string.sync_not_synced))
-                        }
-                    },
-                    trailingContent = {
-                        if (githubState.isSyncing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            MiuixSettingsTextButton(onClick = { githubVm.performSync(context) }) {
-                                Text(stringResource(R.string.sync_title))
-                            }
-                        }
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-
-                ListItem(
-                    leadingContent = {
-                        Icon(
-                            Icons.Outlined.Download,
-                            contentDescription = stringResource(R.string.settings_data_saver),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    headlineContent = { Text(stringResource(R.string.sync_data_saver)) },
-                    supportingContent = { Text(stringResource(R.string.sync_data_saver_desc)) },
-                    trailingContent = {
-                        MiuixSettingsSwitch(
-                            checked = dataSaverMode,
-                            onCheckedChange = { enabled ->
-                                if (enabled != dataSaverMode) {
-                                    pendingDataSaverMode = enabled
-                                }
-                            }
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-
-                AutoSettingsSwitchItems(
-                    repository = autoSettingsRepository,
-                    scope = scope,
-                    sectionScope = AutoSettingsScopes.backup
-                )
-
-                MiuixSettingsTextButton(
-                    onClick = onOpenClearGitHubConfig,
-                    modifier = Modifier.padding(start = 16.dp)
-                ) {
-                    Text(
-                        stringResource(R.string.settings_clear_config),
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-
-            if (githubState.isConfigured || webDavState.isConfigured) {
+            if (webDavState.isConfigured) {
                 ListItem(
                     leadingContent = {
                         Icon(
@@ -661,22 +511,6 @@ internal fun SettingsBackupRestoreSection(
                 }
             }
 
-            githubState.errorMessage?.let { error ->
-                SyncMessageCard(
-                    message = error,
-                    isSuccess = false,
-                    onClose = githubVm::clearMessages
-                )
-            }
-
-            githubState.successMessage?.let { message ->
-                SyncMessageCard(
-                    message = message,
-                    isSuccess = true,
-                    onClose = githubVm::clearMessages
-                )
-            }
-
             webDavState.errorMessage?.let { error ->
                 SyncMessageCard(
                     message = error,
@@ -738,30 +572,6 @@ internal fun SettingsBackupRestoreSection(
             )
         }
 
-        if (pendingDataSaverMode != null) {
-            MiuixSettingsDialog(
-                onDismissRequest = { pendingDataSaverMode = null },
-                title = { Text(stringResource(R.string.sync_data_saver_warning_title)) },
-                text = { Text(stringResource(R.string.sync_data_saver_warning_message)) },
-                confirmButton = {
-                    MiuixSettingsTextButton(
-                        onClick = {
-                            val enabled = pendingDataSaverMode ?: return@MiuixSettingsTextButton
-                            dataSaverMode = enabled
-                            storage.setDataSaverMode(enabled)
-                            pendingDataSaverMode = null
-                        }
-                    ) {
-                        Text(stringResource(R.string.sync_data_saver_warning_confirm))
-                    }
-                },
-                dismissButton = {
-                    MiuixSettingsTextButton(onClick = { pendingDataSaverMode = null }) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                }
-            )
-        }
     }
 }
 
