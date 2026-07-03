@@ -33,6 +33,7 @@
 
     <!-- Navigation -->
     <string name="nav_home">首页</string>
+    <string name="nav_agent">助手</string>
     <string name="nav_explore">探索</string>
     <string name="nav_library">媒体库</string>
     <string name="nav_settings">设置</string>

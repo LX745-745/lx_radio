@@ -52,13 +52,17 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -161,7 +165,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -264,13 +271,19 @@ import moe.ouom.neriplayer.util.saveCoverToPictures
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private const val LyricsPageTransitionDurationMs = 300
 private const val CoverSourceBadgeRevealBufferMs = 120
 private const val CoverSourceBadgeRevealDelayMs =
     LyricsPageTransitionDurationMs + CoverSourceBadgeRevealBufferMs
 private const val QueueSheetMaxHeightFraction = 0.9f
+private const val NowPlayingRotaryStepDegrees = 34f
+private const val NowPlayingRotaryMaxCommitSteps = 8
 private val LyricOffsetStepMsFloat = LYRIC_DEFAULT_OFFSET_STEP_MS.toFloat()
 
 internal fun shouldHideDownloadActionForSong(
@@ -280,6 +293,29 @@ internal fun shouldHideDownloadActionForSong(
 
 internal fun buildNowPlayingQueueItemKey(index: Int, song: SongItem): String {
     return "$index:${song.stableKey()}"
+}
+
+internal fun wrapNowPlayingQueueIndex(index: Int, queueSize: Int): Int {
+    if (queueSize <= 0) return 0
+    return ((index % queueSize) + queueSize) % queueSize
+}
+
+internal fun shortestNowPlayingRotaryDeltaDegrees(fromDegrees: Float, toDegrees: Float): Float {
+    var delta = (toDegrees - fromDegrees) % 360f
+    if (delta > 180f) delta -= 360f
+    if (delta < -180f) delta += 360f
+    return delta
+}
+
+internal fun nowPlayingRotaryPreviewSteps(
+    accumulatedDegrees: Float,
+    queueSize: Int
+): Int {
+    if (queueSize < 2) return 0
+    val maxSteps = minOf(queueSize - 1, NowPlayingRotaryMaxCommitSteps)
+    return (accumulatedDegrees / NowPlayingRotaryStepDegrees)
+        .roundToInt()
+        .coerceIn(-maxSteps, maxSteps)
 }
 
 internal fun resolveNowPlayingPlaybackSourceType(
@@ -457,6 +493,21 @@ fun NowPlayingScreen(
         displayedQueue.indexOfFirst {
             it.sameIdentityAs(currentSong)
         }
+    }
+    var rotaryPreviewOffset by remember(currentSong) { mutableIntStateOf(0) }
+    LaunchedEffect(currentSong) {
+        rotaryPreviewOffset = 0
+    }
+    val coverPreviewSong = remember(displayedQueue, currentIndexInDisplay, rotaryPreviewOffset, currentSong) {
+        val queueSize = displayedQueue.size
+        if (queueSize > 0 && currentIndexInDisplay >= 0 && rotaryPreviewOffset != 0) {
+            displayedQueue[wrapNowPlayingQueueIndex(currentIndexInDisplay + rotaryPreviewOffset, queueSize)]
+        } else {
+            currentSong
+        }
+    }
+    val coverPreviewUrl = remember(coverPreviewSong, context) {
+        coverPreviewSong?.displayCoverUrl(context)
     }
 
     var showAddSheet by remember { mutableStateOf(false) }
@@ -698,23 +749,6 @@ fun NowPlayingScreen(
     val windowWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
     val isWideLayout = windowWidthDp >= 480.dp
     val useWideLandscapeLayout = isWideLayout && isLandscape
-    val isCompactTabletLandscape = useWideLandscapeLayout && windowWidthDp < 720.dp
-    val secondaryControlButtonSize = when {
-        useWideLandscapeLayout && isCompactTabletLandscape -> 42.dp
-        useWideLandscapeLayout -> 46.dp
-        else -> 42.dp
-    }
-    val primaryControlButtonSize = when {
-        useWideLandscapeLayout && isCompactTabletLandscape -> 46.dp
-        useWideLandscapeLayout -> 50.dp
-        else -> 42.dp
-    }
-    val controlButtonSpacing = when {
-        useWideLandscapeLayout && isCompactTabletLandscape -> 18.dp
-        useWideLandscapeLayout -> 22.dp
-        else -> 20.dp
-    }
-
     // 歌词偏移（平台 + 用户自定义）
     val platformOffset = resolveLyricDefaultOffsetMs(
         lyricSource = currentSong?.matchedLyricSource,
@@ -963,22 +997,40 @@ fun NowPlayingScreen(
                                                 showCoverMenu = true
                                             }
                                         }
-                                    )
+                                )
                             ) {
-                                currentCoverUrl?.let { cover ->
-                                    AsyncImage(
-                                        model = remember(context, cover, coverRequestSizePx) {
-                                            offlineCachedImageRequest(
-                                                context = context,
-                                                data = cover,
-                                                sizePx = coverRequestSizePx,
-                                                allowHardware = false
-                                            )
-                                        },
-                                        contentDescription = currentSong?.customName ?: currentSong?.name ?: "",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
+                                val coverSlideDirection = if (rotaryPreviewOffset >= 0) 1 else -1
+                                AnimatedContent(
+                                    targetState = coverPreviewUrl,
+                                    label = "rotary_cover_preview",
+                                    transitionSpec = {
+                                        (
+                                            slideInHorizontally(
+                                                animationSpec = tween(160, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f))
+                                            ) { it * coverSlideDirection / 5 } + fadeIn(tween(120))
+                                        ) togetherWith (
+                                            slideOutHorizontally(
+                                                animationSpec = tween(160, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f))
+                                            ) { -it * coverSlideDirection / 5 } + fadeOut(tween(120))
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                ) { cover ->
+                                    cover?.let {
+                                        AsyncImage(
+                                            model = remember(context, it, coverRequestSizePx) {
+                                                offlineCachedImageRequest(
+                                                    context = context,
+                                                    data = it,
+                                                    sizePx = coverRequestSizePx,
+                                                    allowHardware = false
+                                                )
+                                            },
+                                            contentDescription = coverPreviewSong?.customName ?: coverPreviewSong?.name ?: "",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
                                 }
                             }
 
@@ -1135,75 +1187,31 @@ fun NowPlayingScreen(
                     Spacer(Modifier.height(if (useWideLandscapeLayout) 14.dp else 10.dp))
 
                     // 控制按钮
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(controlButtonSpacing),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        HapticIconButton(onClick = { PlayerManager.setShuffle(!shuffleEnabled) },
-                            modifier = Modifier
-                                .size(secondaryControlButtonSize)
-                        ) {
-                            Icon(
-                                Icons.Outlined.Shuffle,
-                                contentDescription = stringResource(R.string.player_shuffle),
-                                tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                            )
-                        }
-
-                        HapticIconButton(onClick = { PlayerManager.previous() },
-                            modifier = Modifier
-                            .sharedElement(
-                                rememberSharedContentState(key = "player_previous"),
-                                animatedVisibilityScope = this@AnimatedContent
-                            )
-                            .size(secondaryControlButtonSize)
-                        ) {
-                            Icon(Icons.Outlined.SkipPrevious, contentDescription = stringResource(R.string.player_previous))
-                        }
-
-                        HapticFilledIconButton(
-                            onClick = { PlayerManager.togglePlayPause() },
-                            modifier = Modifier
-                                .sharedElement(
-                                    rememberSharedContentState(key = "play_button"),
-                                    animatedVisibilityScope = this@AnimatedContent
-                                )
-                                .size(primaryControlButtonSize)
-                        ) {
-                            AnimatedContent(
-                                targetState = isPlaybackControlPlaying,
-                                label = "play_pause_icon",
-                                transitionSpec = { (scaleIn() + fadeIn()) togetherWith (scaleOut() + fadeOut()) }
-                            ) { currentlyPlaying ->
-                                Icon(
-                                    imageVector = if (currentlyPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                                    contentDescription = if (currentlyPlaying) stringResource(R.string.player_pause) else stringResource(R.string.player_play)
-                                )
-                            }
-                        }
-                        HapticIconButton(onClick = { PlayerManager.next() },
-                            modifier = Modifier
-                            .sharedElement(
-                                rememberSharedContentState(key = "player_next"),
-                                animatedVisibilityScope = this@AnimatedContent
-                            )
-                            .size(secondaryControlButtonSize)
-                        ) {
-                            Icon(Icons.Outlined.SkipNext, contentDescription = stringResource(R.string.player_next))
-                        }
-                        HapticIconButton(onClick = { PlayerManager.cycleRepeatMode() },
-                            modifier = Modifier
-                                .size(secondaryControlButtonSize)
-                        ) {
-                            Icon(
-                                imageVector = if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Filled.RepeatOne else Icons.Outlined.Repeat,
-                                contentDescription = stringResource(R.string.player_repeat),
-                                tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                            )
-                        }
-                    }
-
+                    NowPlayingRotaryControls(
+                        isPlaybackControlPlaying = isPlaybackControlPlaying,
+                        shuffleEnabled = shuffleEnabled,
+                        repeatMode = repeatMode,
+                        queueSize = displayedQueue.size,
+                        onPreviewOffsetChange = { rotaryPreviewOffset = it },
+                        onToggleShuffle = { PlayerManager.setShuffle(!shuffleEnabled) },
+                        onPrevious = { PlayerManager.previous() },
+                        onTogglePlayPause = { PlayerManager.togglePlayPause() },
+                        onNext = { PlayerManager.next() },
+                        onCycleRepeatMode = { PlayerManager.cycleRepeatMode() },
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        previousModifier = Modifier.sharedElement(
+                            rememberSharedContentState(key = "player_previous"),
+                            animatedVisibilityScope = this@AnimatedContent
+                        ),
+                        playModifier = Modifier.sharedElement(
+                            rememberSharedContentState(key = "play_button"),
+                            animatedVisibilityScope = this@AnimatedContent
+                        ),
+                        nextModifier = Modifier.sharedElement(
+                            rememberSharedContentState(key = "player_next"),
+                            animatedVisibilityScope = this@AnimatedContent
+                        )
+                    )
                     // 手机/竖屏，内嵌迷你歌词
                     if (!useWideLandscapeLayout && lyrics.isNotEmpty()) {
                         Spacer(Modifier.weight(1f))
@@ -3187,6 +3195,189 @@ fun EditSongInfoSheet(
             }
         }
     }
+}
+
+@Composable
+private fun NowPlayingRotaryControls(
+    isPlaybackControlPlaying: Boolean,
+    shuffleEnabled: Boolean,
+    repeatMode: Int,
+    queueSize: Int,
+    onPreviewOffsetChange: (Int) -> Unit,
+    onToggleShuffle: () -> Unit,
+    onPrevious: () -> Unit,
+    onTogglePlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onCycleRepeatMode: () -> Unit,
+    modifier: Modifier = Modifier,
+    previousModifier: Modifier = Modifier,
+    playModifier: Modifier = Modifier,
+    nextModifier: Modifier = Modifier
+) {
+    var accumulatedDegrees by remember { mutableFloatStateOf(0f) }
+    var previewSteps by remember { mutableIntStateOf(0) }
+    val animatedRingRotation by animateFloatAsState(
+        targetValue = accumulatedDegrees,
+        animationSpec = tween(durationMillis = 180, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)),
+        label = "now_playing_rotary_ring_rotation"
+    )
+    val ringColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.56f)
+    val inactiveTickColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.28f)
+    val surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.34f)
+
+    fun resetDragState() {
+        accumulatedDegrees = 0f
+        previewSteps = 0
+        onPreviewOffsetChange(0)
+    }
+
+    Box(
+        modifier = modifier
+            .size(132.dp)
+            .pointerInput(queueSize) {
+                detectDragGestures(
+                    onDragStart = {
+                        accumulatedDegrees = 0f
+                        previewSteps = 0
+                        onPreviewOffsetChange(0)
+                    },
+                    onDragCancel = { resetDragState() },
+                    onDragEnd = {
+                        val stepsToCommit = previewSteps
+                        resetDragState()
+                        when {
+                            stepsToCommit > 0 -> repeat(stepsToCommit) { onNext() }
+                            stepsToCommit < 0 -> repeat(abs(stepsToCommit)) { onPrevious() }
+                        }
+                    }
+                ) { change, _ ->
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val previousAngle = angleDegrees(change.previousPosition - center)
+                    val currentAngle = angleDegrees(change.position - center)
+                    accumulatedDegrees += shortestNowPlayingRotaryDeltaDegrees(
+                        fromDegrees = previousAngle,
+                        toDegrees = currentAngle
+                    )
+                    val newPreviewSteps = nowPlayingRotaryPreviewSteps(
+                        accumulatedDegrees = accumulatedDegrees,
+                        queueSize = queueSize
+                    )
+                    if (newPreviewSteps != previewSteps) {
+                        previewSteps = newPreviewSteps
+                        onPreviewOffsetChange(newPreviewSteps)
+                    }
+                    change.consume()
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { rotationZ = animatedRingRotation }
+        ) {
+            val strokeWidth = 7.dp.toPx()
+            val radius = size.minDimension / 2f - strokeWidth / 2f
+            drawCircle(
+                color = surfaceColor,
+                radius = radius,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = ringColor,
+                startAngle = -42f,
+                sweepAngle = 84f,
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+            repeat(24) { tick ->
+                val angle = Math.toRadians((tick * 15f - 90f).toDouble())
+                val inner = radius - 6.dp.toPx()
+                val outer = radius + 1.dp.toPx()
+                drawLine(
+                    color = if (tick % 6 == 0) ringColor else inactiveTickColor,
+                    start = Offset(
+                        x = center.x + cos(angle).toFloat() * inner,
+                        y = center.y + sin(angle).toFloat() * inner
+                    ),
+                    end = Offset(
+                        x = center.x + cos(angle).toFloat() * outer,
+                        y = center.y + sin(angle).toFloat() * outer
+                    ),
+                    strokeWidth = if (tick % 6 == 0) 2.5.dp.toPx() else 1.5.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+
+        HapticIconButton(
+            onClick = onToggleShuffle,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .size(40.dp)
+        ) {
+            Icon(
+                Icons.Outlined.Shuffle,
+                contentDescription = stringResource(R.string.player_shuffle),
+                tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else LocalContentColor.current
+            )
+        }
+
+        HapticIconButton(
+            onClick = onPrevious,
+            modifier = previousModifier
+                .align(Alignment.CenterStart)
+                .size(42.dp)
+        ) {
+            Icon(Icons.Outlined.SkipPrevious, contentDescription = stringResource(R.string.player_previous))
+        }
+
+        HapticFilledIconButton(
+            onClick = onTogglePlayPause,
+            modifier = playModifier.size(52.dp)
+        ) {
+            AnimatedContent(
+                targetState = isPlaybackControlPlaying,
+                label = "play_pause_icon",
+                transitionSpec = { (scaleIn() + fadeIn()) togetherWith (scaleOut() + fadeOut()) }
+            ) { currentlyPlaying ->
+                Icon(
+                    imageVector = if (currentlyPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                    contentDescription = if (currentlyPlaying) {
+                        stringResource(R.string.player_pause)
+                    } else {
+                        stringResource(R.string.player_play)
+                    }
+                )
+            }
+        }
+
+        HapticIconButton(
+            onClick = onNext,
+            modifier = nextModifier
+                .align(Alignment.CenterEnd)
+                .size(42.dp)
+        ) {
+            Icon(Icons.Outlined.SkipNext, contentDescription = stringResource(R.string.player_next))
+        }
+
+        HapticIconButton(
+            onClick = onCycleRepeatMode,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .size(40.dp)
+        ) {
+            Icon(
+                imageVector = if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Filled.RepeatOne else Icons.Outlined.Repeat,
+                contentDescription = stringResource(R.string.player_repeat),
+                tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else LocalContentColor.current
+            )
+        }
+    }
+}
+
+private fun angleDegrees(offset: Offset): Float {
+    return Math.toDegrees(atan2(offset.y, offset.x).toDouble()).toFloat()
 }
 
 @Composable

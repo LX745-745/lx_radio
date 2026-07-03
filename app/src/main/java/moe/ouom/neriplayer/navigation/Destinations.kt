@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets
 sealed class Destinations(val route: String, val labelResId: Int) {
     // TAB
     data object Home : Destinations("home", moe.ouom.neriplayer.R.string.nav_home)
+    data object Agent : Destinations("agent", moe.ouom.neriplayer.R.string.nav_agent)
     data object Explore : Destinations("explore", moe.ouom.neriplayer.R.string.nav_explore)
     data object Library : Destinations("library", moe.ouom.neriplayer.R.string.nav_library)
     data object Settings : Destinations("settings", moe.ouom.neriplayer.R.string.nav_settings)

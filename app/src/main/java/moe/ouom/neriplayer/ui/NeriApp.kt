@@ -67,6 +67,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.MaterialTheme
@@ -175,6 +176,7 @@ import moe.ouom.neriplayer.ui.screen.DownloadProgressScreen
 import moe.ouom.neriplayer.ui.screen.NowPlayingScreen
 import moe.ouom.neriplayer.ui.screen.RecentScreen
 import moe.ouom.neriplayer.ui.screen.PlaybackStatsScreen
+import moe.ouom.neriplayer.ui.screen.agent.MusicAgentScreen
 import moe.ouom.neriplayer.ui.screen.debug.BiliApiProbeScreen
 import moe.ouom.neriplayer.ui.screen.debug.CrashLogListScreen
 import moe.ouom.neriplayer.ui.screen.debug.DebugCrashTestType
@@ -218,6 +220,7 @@ private fun resolveMainStartDestination(
 ): String {
     return when (preferredRoute) {
         Destinations.Home.route -> if (showHomeTab) Destinations.Home.route else Destinations.Explore.route
+        Destinations.Agent.route -> Destinations.Agent.route
         Destinations.Explore.route -> Destinations.Explore.route
         Destinations.Library.route -> Destinations.Library.route
         Destinations.Settings.route -> Destinations.Settings.route
@@ -1043,6 +1046,7 @@ private fun NeriAppContent(
             val bottomBarItems = remember(showHomeTab, devModeEnabled) {
                 buildList {
                     if (showHomeTab) add(Destinations.Home to Icons.Outlined.Home)
+                    add(Destinations.Agent to Icons.Outlined.MusicNote)
                     add(Destinations.Explore to Icons.Outlined.Search)
                     add(Destinations.Library to Icons.Outlined.LibraryMusic)
                     add(Destinations.Settings to Icons.Outlined.Settings)
@@ -1352,6 +1356,42 @@ private fun NeriAppContent(
                                         onPlayAudio = ::playBiliAudioAndOpenNowPlaying,
                                         onPlayParts = ::playBiliPartsAndOpenNowPlaying
                                     )
+                                }
+
+                                composable(
+                                    Destinations.Agent.route,
+                                    enterTransition = {
+                                        scaleIn(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessLow
+                                            ),
+                                            initialScale = 0.85f
+                                        ) + fadeIn(animationSpec = tween(300, easing = EaseInOutCubic))
+                                    },
+                                    exitTransition = {
+                                        scaleOut(
+                                            animationSpec = tween(200, easing = EaseInOutCubic),
+                                            targetScale = 0.95f
+                                        ) + fadeOut(animationSpec = tween(200, easing = EaseInOutCubic))
+                                    },
+                                    popEnterTransition = {
+                                        scaleIn(
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessLow
+                                            ),
+                                            initialScale = 0.95f
+                                        ) + fadeIn(animationSpec = tween(300, easing = EaseInOutCubic))
+                                    },
+                                    popExitTransition = {
+                                        scaleOut(
+                                            animationSpec = tween(200, easing = EaseInOutCubic),
+                                            targetScale = 0.85f
+                                        ) + fadeOut(animationSpec = tween(200, easing = EaseInOutCubic))
+                                    }
+                                ) {
+                                    MusicAgentScreen(onPlaySongs = ::playSongsAndOpenNowPlaying)
                                 }
 
                                 composable(

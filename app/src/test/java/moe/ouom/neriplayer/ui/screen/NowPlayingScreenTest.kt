@@ -75,6 +75,26 @@ class NowPlayingScreenTest {
     }
 
     @Test
+    fun `queue index wraps in both directions`() {
+        assertTrue(wrapNowPlayingQueueIndex(index = 4, queueSize = 4) == 0)
+        assertTrue(wrapNowPlayingQueueIndex(index = -1, queueSize = 4) == 3)
+        assertTrue(wrapNowPlayingQueueIndex(index = -5, queueSize = 4) == 3)
+    }
+
+    @Test
+    fun `rotary angle delta uses the shortest path across boundary`() {
+        assertTrue(shortestNowPlayingRotaryDeltaDegrees(170f, -170f) == 20f)
+        assertTrue(shortestNowPlayingRotaryDeltaDegrees(-170f, 170f) == -20f)
+    }
+
+    @Test
+    fun `rotary preview steps are rounded and bounded by queue`() {
+        assertTrue(nowPlayingRotaryPreviewSteps(accumulatedDegrees = 36f, queueSize = 10) == 1)
+        assertTrue(nowPlayingRotaryPreviewSteps(accumulatedDegrees = -70f, queueSize = 10) == -2)
+        assertTrue(nowPlayingRotaryPreviewSteps(accumulatedDegrees = 360f, queueSize = 3) == 2)
+    }
+
+    @Test
     fun `playback source badge uses resolved bili audio source over netease tag`() {
         val sourceType = resolveNowPlayingPlaybackSourceType(
             isLocalSong = false,
